@@ -38,6 +38,9 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    
+    <!-- Anti-debugging protection -->
+    <script src="js/security.js"></script>
 </head>
 <body>
     <div class="container">
@@ -335,9 +338,10 @@
         </div>
     </template>
 
-    <script src="js/app.js"></script>
+    <!-- Scripts protegidos -->
     <script src="js/sync.js"></script>
-    <script src="js/facturas.js"></script>
+    <script src="js/app.min.js"></script>
+    <script src="js/facturas.min.js"></script>
     <script>
         // Registrar Service Worker
         if ('serviceWorker' in navigator) {
@@ -352,22 +356,54 @@
             });
         }
 
-        // Inicializar sistema de sincronización simple
+        // Inicializar aplicación
         document.addEventListener('DOMContentLoaded', () => {
-            // Esperar a que el gestor de finanzas esté listo
+            // Verificar entorno solo en producción
+            const isProduction = !window.location.href.includes('localhost') && 
+                                !window.location.href.includes('127.0.0.1') &&
+                                !window.location.href.includes('file://');
+            
+            if(isProduction && window._sec && !window._sec.checkEnv()) {
+                document.body.innerHTML = '<div style="text-align:center;padding:50px;color:red;font-family:Arial;">Entorno no autorizado detectado</div>';
+                return;
+            }
+            
             setTimeout(() => {
-                window.sincronizacionSimple = new SincronizacionSimple();
-                window.gestorFacturas = new GestorFacturas();
+                try {
+                    window.sincronizacionSimple = new SincronizacionSimple();
+                    window.gestorFinanzas = new GestorFinanzas();
+                    window.gestorFacturas = new GestorFacturas();
+                    
+                    // Mostrar mensaje de estado de protección solo en desarrollo
+                    if(!isProduction) {
+                        console.log('%c🛡️ Modo Desarrollo - Protecciones reducidas', 'color: orange; font-size: 14px;');
+                    } else {
+                        console.log('%c🔒 Modo Producción - Protecciones activas', 'color: green; font-size: 14px;');
+                    }
+                } catch(e) {
+                    console.error('Error iniciando aplicación:', e);
+                    // En desarrollo, mostrar error detallado
+                    if(!isProduction) {
+                        alert('Error de inicialización: ' + e.message);
+                    } else {
+                        document.body.innerHTML = '<div style="text-align:center;padding:50px;font-family:Arial;">Error de inicialización</div>';
+                    }
+                }
             }, 1000);
         });
 
         // Detectar si es una PWA instalada
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevenir el prompt automático
             e.preventDefault();
-            // Guardar el evento para usarlo después
             window.deferredPrompt = e;
         });
+
+        // Protección adicional
+        setInterval(() => {
+            if(typeof console !== 'undefined' && console.clear) {
+                console.clear();
+            }
+        }, 5000);
     </script>
 </body>
 </html>
