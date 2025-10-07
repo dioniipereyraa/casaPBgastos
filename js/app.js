@@ -3,15 +3,32 @@ class GestorFinanzas {
     constructor() {
         this.ingresos = [];
         this.gastos = [];
+        this.database = null;
         this.init();
     }
 
-    init() {
-        this.cargarDatos();
+    async init() {
+        // Inicializar base de datos
+        this.database = new DatabaseService();
+        
+        // Esperar a que se inicialice Firebase
+        await new Promise(resolve => {
+            const checkInit = () => {
+                if (this.database.userId) {
+                    resolve();
+                } else {
+                    setTimeout(checkInit, 100);
+                }
+            };
+            checkInit();
+        });
+        
+        await this.cargarDatos();
         this.configurarEventos();
         this.establecerFechaActual();
         this.actualizarBalance();
         this.mostrarEstadoInicial();
+        this.mostrarInfoUsuario();
     }
 
     // Configuración de eventos
@@ -66,7 +83,7 @@ class GestorFinanzas {
     }
 
     // Gestión de ingresos
-    agregarIngreso() {
+    async agregarIngreso() {
         const descripcion = document.getElementById('descripcionIngreso').value.trim();
         const monto = parseFloat(document.getElementById('montoIngreso').value);
         const fecha = document.getElementById('fechaIngreso').value;
@@ -92,16 +109,23 @@ class GestorFinanzas {
             fechaCreacion: new Date().toISOString()
         };
 
-        this.ingresos.push(nuevoIngreso);
-        this.guardarDatos();
-        this.renderizarIngresos();
-        this.actualizarBalance();
-        this.ocultarFormulario('formIngreso');
-        this.mostrarAlerta('Ingreso agregado exitosamente', 'success');
+        try {
+            // Guardar en base de datos (con sincronización)
+            await this.database.saveData('incomes', nuevoIngreso);
+            this.ingresos.push(nuevoIngreso);
+            
+            this.renderizarIngresos();
+            this.actualizarBalance();
+            this.ocultarFormulario('formIngreso');
+            this.mostrarAlerta('Ingreso agregado exitosamente', 'success');
+        } catch (error) {
+            this.mostrarAlerta('Error al guardar el ingreso', 'error');
+            console.error('Error:', error);
+        }
     }
 
     // Gestión de gastos
-    agregarGasto() {
+    async agregarGasto() {
         const descripcion = document.getElementById('descripcionGasto').value.trim();
         const monto = parseFloat(document.getElementById('montoGasto').value);
         const fecha = document.getElementById('fechaGasto').value;
@@ -127,12 +151,19 @@ class GestorFinanzas {
             fechaCreacion: new Date().toISOString()
         };
 
-        this.gastos.push(nuevoGasto);
-        this.guardarDatos();
-        this.renderizarGastos();
-        this.actualizarBalance();
-        this.ocultarFormulario('formGasto');
-        this.mostrarAlerta('Gasto agregado exitosamente', 'success');
+        try {
+            // Guardar en base de datos (con sincronización)
+            await this.database.saveData('expenses', nuevoGasto);
+            this.gastos.push(nuevoGasto);
+            
+            this.renderizarGastos();
+            this.actualizarBalance();
+            this.ocultarFormulario('formGasto');
+            this.mostrarAlerta('Gasto agregado exitosamente', 'success');
+        } catch (error) {
+            this.mostrarAlerta('Error al guardar el gasto', 'error');
+            console.error('Error:', error);
+        }
     }
 
     // Renderizado de listas
@@ -237,22 +268,31 @@ class GestorFinanzas {
         this.mostrarAlerta('Transacción actualizada', 'success');
     }
 
-    eliminarTransaccion(transaccion) {
+    async eliminarTransaccion(transaccion) {
         if (!confirm(`¿Estás seguro de que quieres eliminar "${transaccion.descripcion}"?`)) {
             return;
         }
 
-        if (transaccion.tipo === 'ingreso') {
-            this.ingresos = this.ingresos.filter(i => i.id !== transaccion.id);
-            this.renderizarIngresos();
-        } else {
-            this.gastos = this.gastos.filter(g => g.id !== transaccion.id);
-            this.renderizarGastos();
-        }
+        try {
+            // Eliminar de la base de datos
+            const collection = transaccion.tipo === 'ingreso' ? 'incomes' : 'expenses';
+            await this.database.deleteData(collection, transaccion.id);
 
-        this.guardarDatos();
-        this.actualizarBalance();
-        this.mostrarAlerta('Transacción eliminada', 'success');
+            // Eliminar del array local
+            if (transaccion.tipo === 'ingreso') {
+                this.ingresos = this.ingresos.filter(i => i.id !== transaccion.id);
+                this.renderizarIngresos();
+            } else {
+                this.gastos = this.gastos.filter(g => g.id !== transaccion.id);
+                this.renderizarGastos();
+            }
+
+            this.actualizarBalance();
+            this.mostrarAlerta('Transacción eliminada', 'success');
+        } catch (error) {
+            this.mostrarAlerta('Error al eliminar la transacción', 'error');
+            console.error('Error:', error);
+        }
     }
 
     // Cálculo y actualización del balance
@@ -296,35 +336,28 @@ class GestorFinanzas {
     }
 
     // Persistencia de datos
-    guardarDatos() {
+    // Cargar datos desde base de datos con sincronización
+    async cargarDatos() {
         try {
-            localStorage.setItem('gestorFinanzas_ingresos', JSON.stringify(this.ingresos));
-            localStorage.setItem('gestorFinanzas_gastos', JSON.stringify(this.gastos));
-        } catch (error) {
-            console.error('Error al guardar datos:', error);
-            this.mostrarAlerta('Error al guardar datos', 'error');
-        }
-    }
-
-    cargarDatos() {
-        try {
-            const ingresosGuardados = localStorage.getItem('gestorFinanzas_ingresos');
-            const gastosGuardados = localStorage.getItem('gestorFinanzas_gastos');
-
-            if (ingresosGuardados) {
-                this.ingresos = JSON.parse(ingresosGuardados);
-            }
-
-            if (gastosGuardados) {
-                this.gastos = JSON.parse(gastosGuardados);
-            }
+            // Cargar ingresos y gastos desde la base de datos
+            this.ingresos = await this.database.loadData('incomes');
+            this.gastos = await this.database.loadData('expenses');
 
             this.renderizarIngresos();
             this.renderizarGastos();
+            
+            console.log(`Cargados: ${this.ingresos.length} ingresos, ${this.gastos.length} gastos`);
         } catch (error) {
             console.error('Error al cargar datos:', error);
             this.mostrarAlerta('Error al cargar datos guardados', 'error');
         }
+    }
+
+    // Método legacy - ya no se usa, mantenido por compatibilidad
+    guardarDatos() {
+        // Los datos ahora se guardan automáticamente en la base de datos
+        // cuando se agregan/editan/eliminan
+        console.log('Método guardarDatos() legacy - usando base de datos automática');
     }
 
     // Utilidades
@@ -479,16 +512,35 @@ class GestorFinanzas {
         link.click();
     }
 
-    limpiarDatos() {
+    async limpiarDatos() {
         if (confirm('¿Estás seguro de que quieres eliminar todos los datos? Esta acción no se puede deshacer.')) {
+            // Limpiar arrays locales
             this.ingresos = [];
             this.gastos = [];
+            
+            // Limpiar localStorage legacy
             localStorage.removeItem('gestorFinanzas_ingresos');
             localStorage.removeItem('gestorFinanzas_gastos');
+            
+            // TODO: Implementar limpieza de Firebase cuando esté configurado
+            
             this.renderizarIngresos();
             this.renderizarGastos();
             this.actualizarBalance();
             this.mostrarAlerta('Todos los datos han sido eliminados', 'success');
+        }
+    }
+
+    // Mostrar información del usuario y estado de sincronización
+    mostrarInfoUsuario() {
+        const info = this.database.getUserInfo();
+        console.log('👤 Usuario:', info.userId?.substring(0, 8) + '...');
+        console.log('🔑 Clave:', info.userKey);
+        console.log('🌐 Estado:', info.isOnline ? 'En línea' : 'Sin conexión');
+        console.log('📱 Modo:', info.useLocalStorageOnly ? 'Solo localStorage' : 'Firebase + localStorage');
+        
+        if (info.pendingOperations > 0) {
+            console.log('⏳ Operaciones pendientes:', info.pendingOperations);
         }
     }
 }

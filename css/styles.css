@@ -61,14 +61,30 @@ body {
 .header {
     text-align: center;
     margin-bottom: var(--spacing-2xl);
-    padding: var(--spacing-xl) 0;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-sm);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.header-title {
+    flex: 1;
+    text-align: left;
 }
 
 .header h1 {
     font-size: 2.5rem;
     font-weight: 700;
     color: var(--primary-color);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
 }
 
 .header h1 i {
@@ -79,7 +95,87 @@ body {
     font-size: 1.1rem;
     color: var(--text-secondary);
     max-width: 600px;
-    margin: 0 auto;
+    margin: 0;
+}
+
+/* Sync Status */
+.sync-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--spacing-xs);
+}
+
+.sync-status {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.sync-status.online {
+    background: linear-gradient(45deg, #10b981, #059669);
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+.sync-status.offline {
+    background: #fef3c7;
+    color: #d97706;
+    border-color: #f59e0b;
+}
+
+.sync-status.syncing {
+    background: linear-gradient(45deg, #3b82f6, #2563eb);
+    color: white;
+    animation: syncing 1s linear infinite;
+}
+
+.sync-status.synced {
+    background: #d1fae5;
+    color: #059669;
+    border-color: #10b981;
+}
+
+.sync-status.error {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #ef4444;
+}
+
+.user-info {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes syncing {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .header-title {
+        text-align: center;
+    }
+    
+    .sync-info {
+        align-items: center;
+    }
 }
 
 /* Balance Section */

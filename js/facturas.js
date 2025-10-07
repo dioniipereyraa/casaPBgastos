@@ -4,10 +4,16 @@ class GestorFacturas {
         this.apiKey = '';
         this.facturas = [];
         this.procesando = false;
+        this.database = null;
         this.init();
     }
 
     init() {
+        // Esperar a que la base de datos esté disponible
+        if (window.gestorFinanzas && window.gestorFinanzas.database) {
+            this.database = window.gestorFinanzas.database;
+        }
+        
         this.cargarApiKey();
         this.cargarFacturas();
         this.configurarEventos();
@@ -187,6 +193,11 @@ class GestorFacturas {
                 miniatura: base64
             };
             
+            // Guardar en base de datos si está disponible
+            if (this.database) {
+                await this.database.saveData('invoices', factura);
+            }
+            
             this.facturas.push(factura);
             this.guardarFacturas();
             
@@ -334,7 +345,7 @@ class GestorFacturas {
         document.getElementById('editarDatos').disabled = false;
     }
 
-    confirmarTransaccion() {
+    async confirmarTransaccion() {
         const descripcion = document.getElementById('extractedDesc').value.trim();
         const monto = parseFloat(document.getElementById('extractedAmount').value);
         const fecha = document.getElementById('extractedDate').value;
@@ -363,21 +374,30 @@ class GestorFacturas {
             origen: 'factura'
         };
 
-        // Agregar a la aplicación principal
-        if (tipo === 'ingreso') {
-            window.gestorFinanzas.ingresos.push(transaccion);
-            window.gestorFinanzas.renderizarIngresos();
-        } else {
-            window.gestorFinanzas.gastos.push(transaccion);
-            window.gestorFinanzas.renderizarGastos();
+        try {
+            // Guardar en base de datos usando el gestor principal
+            const collection = tipo === 'ingreso' ? 'incomes' : 'expenses';
+            await window.gestorFinanzas.database.saveData(collection, transaccion);
+
+            // Agregar a la aplicación principal
+            if (tipo === 'ingreso') {
+                window.gestorFinanzas.ingresos.push(transaccion);
+                window.gestorFinanzas.renderizarIngresos();
+            } else {
+                window.gestorFinanzas.gastos.push(transaccion);
+                window.gestorFinanzas.renderizarGastos();
+            }
+
+            window.gestorFinanzas.actualizarBalance();
+            
+            // Limpiar formulario y ocultar datos extraídos
+            this.ocultarDatosExtraidos();
+            
+            alert('Transacción agregada exitosamente desde la factura');
+        } catch (error) {
+            console.error('Error al guardar transacción:', error);
+            alert('Error al guardar la transacción');
         }
-
-        window.gestorFinanzas.guardarDatos();
-        window.gestorFinanzas.actualizarBalance();
-
-        this.mostrarAlerta(`${tipo === 'ingreso' ? 'Ingreso' : 'Gasto'} agregado exitosamente`, 'success');
-        this.descartarDatos();
-        this.renderizarFacturas();
     }
 
     descartarDatos() {
@@ -390,12 +410,21 @@ class GestorFacturas {
         document.getElementById('extractedType').value = 'gasto';
     }
 
+    ocultarDatosExtraidos() {
+        this.descartarDatos();
+    }
+
     // Gestión de facturas
-    cargarFacturas() {
+    async cargarFacturas() {
         try {
-            const facturasGuardadas = localStorage.getItem('gestorFinanzas_facturas');
-            if (facturasGuardadas) {
-                this.facturas = JSON.parse(facturasGuardadas);
+            if (this.database) {
+                this.facturas = await this.database.loadData('invoices');
+            } else {
+                // Fallback a localStorage
+                const facturasGuardadas = localStorage.getItem('gestorFinanzas_facturas');
+                if (facturasGuardadas) {
+                    this.facturas = JSON.parse(facturasGuardadas);
+                }
             }
             this.renderizarFacturas();
         } catch (error) {
@@ -403,9 +432,16 @@ class GestorFacturas {
         }
     }
 
-    guardarFacturas() {
+    async guardarFacturas() {
         try {
-            localStorage.setItem('gestorFinanzas_facturas', JSON.stringify(this.facturas));
+            if (this.database) {
+                // Las facturas individuales ya se guardan en la base de datos
+                // Este método se mantiene por compatibilidad
+                console.log('Facturas guardadas automáticamente en la base de datos');
+            } else {
+                // Fallback a localStorage
+                localStorage.setItem('gestorFinanzas_facturas', JSON.stringify(this.facturas));
+            }
         } catch (error) {
             console.error('Error al guardar facturas:', error);
         }
