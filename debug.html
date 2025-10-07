@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico Firebase - Casa PB Gastos</title>
+    <style>
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .success { border-color: #10b981; background: #f0fdf4; }
+        .error { border-color: #ef4444; background: #fef2f2; }
+        .warning { border-color: #f59e0b; background: #fef3c7; }
+        .info { border-color: #3b82f6; background: #eff6ff; }
+        .result {
+            font-family: monospace;
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .status-icon {
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Diagnóstico de Firebase</h1>
+        <p>Esta página te ayudará a identificar por qué Firebase no está funcionando correctamente.</p>
+        
+        <div id="test1" class="test-section info">
+            <h3><span class="status-icon">⏳</span>Test 1: Configuración de Firebase</h3>
+            <p>Verificando si Firebase está configurado correctamente...</p>
+            <div id="result1" class="result"></div>
+        </div>
+        
+        <div id="test2" class="test-section info">
+            <h3><span class="status-icon">⏳</span>Test 2: Conexión a Firestore</h3>
+            <p>Probando la conexión a la base de datos...</p>
+            <div id="result2" class="result"></div>
+        </div>
+        
+        <div id="test3" class="test-section info">
+            <h3><span class="status-icon">⏳</span>Test 3: Escritura de Datos</h3>
+            <p>Intentando escribir datos de prueba...</p>
+            <div id="result3" class="result"></div>
+            <button onclick="testWrite()">🔄 Reintentar Escritura</button>
+        </div>
+        
+        <div id="test4" class="test-section info">
+            <h3><span class="status-icon">⏳</span>Test 4: Lectura de Datos</h3>
+            <p>Intentando leer datos de la base de datos...</p>
+            <div id="result4" class="result"></div>
+            <button onclick="testRead()">🔄 Reintentar Lectura</button>
+        </div>
+        
+        <div id="test5" class="test-section info">
+            <h3><span class="status-icon">⏳</span>Test 5: Reglas de Seguridad</h3>
+            <p>Verificando las reglas de Firestore...</p>
+            <div id="result5" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🛠️ Acciones de Debug</h3>
+            <button onclick="showFullConfig()">📋 Mostrar Configuración Completa</button>
+            <button onclick="testUserGeneration()">👤 Generar Nuevo Usuario</button>
+            <button onclick="clearLocalStorage()">🗑️ Limpiar localStorage</button>
+            <button onclick="forceSync()">🔄 Forzar Sincronización</button>
+        </div>
+        
+        <div id="console" class="test-section">
+            <h3>📱 Consola de Debug</h3>
+            <div id="debugConsole" class="result"></div>
+        </div>
+    </div>
+
+    <!-- Scripts de Firebase -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/database.js"></script>
+    
+    <script>
+        let debugLog = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            debugLog.push(logEntry);
+            
+            const consoleEl = document.getElementById('debugConsole');
+            consoleEl.textContent = debugLog.join('\n');
+            
+            console.log(logEntry);
+        }
+        
+        function updateTestStatus(testId, status, message) {
+            const testEl = document.getElementById(testId);
+            const statusIcon = testEl.querySelector('.status-icon');
+            const resultEl = document.getElementById(`result${testId.slice(-1)}`);
+            
+            testEl.className = `test-section ${status}`;
+            
+            switch(status) {
+                case 'success':
+                    statusIcon.textContent = '✅';
+                    break;
+                case 'error':
+                    statusIcon.textContent = '❌';
+                    break;
+                case 'warning':
+                    statusIcon.textContent = '⚠️';
+                    break;
+                default:
+                    statusIcon.textContent = '⏳';
+            }
+            
+            resultEl.textContent = message;
+            log(`${testId}: ${message}`, status);
+        }
+        
+        async function runDiagnostics() {
+            log('🚀 Iniciando diagnósticos de Firebase...');
+            
+            // Test 1: Configuración
+            try {
+                if (window.firebaseConfig) {
+                    updateTestStatus('test1', 'success', 
+                        `✅ Configuración encontrada:\n` +
+                        `- Project ID: ${window.firebaseConfig.projectId}\n` +
+                        `- API Key: ${window.firebaseConfig.apiKey ? 'Configurada' : 'Faltante'}\n` +
+                        `- Auth Domain: ${window.firebaseConfig.authDomain}`
+                    );
+                } else {
+                    updateTestStatus('test1', 'error', 
+                        '❌ No se encontró configuración de Firebase.\n' +
+                        'Verifica que firebase-config.js esté cargado correctamente.'
+                    );
+                    return;
+                }
+            } catch (error) {
+                updateTestStatus('test1', 'error', `❌ Error en configuración: ${error.message}`);
+                return;
+            }
+            
+            // Test 2: Inicialización de Database
+            try {
+                window.database = new DatabaseService();
+                
+                // Esperar inicialización
+                await new Promise(resolve => {
+                    const checkInit = () => {
+                        if (window.database.userId) {
+                            resolve();
+                        } else {
+                            setTimeout(checkInit, 500);
+                        }
+                    };
+                    checkInit();
+                });
+                
+                const userInfo = window.database.getUserInfo();
+                updateTestStatus('test2', 'success', 
+                    `✅ Base de datos inicializada:\n` +
+                    `- User ID: ${userInfo.userId?.substring(0, 8)}...\n` +
+                    `- Conectado: ${userInfo.isOnline ? 'Sí' : 'No'}\n` +
+                    `- Modo: ${userInfo.useLocalStorageOnly ? 'Solo localStorage' : 'Firebase + localStorage'}`
+                );
+            } catch (error) {
+                updateTestStatus('test2', 'error', `❌ Error inicializando base de datos: ${error.message}`);
+                return;
+            }
+            
+            // Test 3: Escritura
+            await testWrite();
+            
+            // Test 4: Lectura  
+            await testRead();
+            
+            // Test 5: Reglas
+            testSecurityRules();
+        }
+        
+        async function testWrite() {
+            try {
+                const testData = {
+                    id: 'test_' + Date.now(),
+                    descripcion: 'Test de Firebase',
+                    monto: 100,
+                    fecha: new Date().toISOString().split('T')[0],
+                    categoria: 'otros',
+                    tipo: 'gasto',
+                    fechaCreacion: new Date().toISOString(),
+                    test: true
+                };
+                
+                await window.database.saveData('expenses', testData);
+                
+                updateTestStatus('test3', 'success', 
+                    `✅ Escritura exitosa:\n` +
+                    `- Datos guardados con ID: ${testData.id}\n` +
+                    `- Timestamp: ${new Date().toLocaleTimeString()}`
+                );
+            } catch (error) {
+                updateTestStatus('test3', 'error', 
+                    `❌ Error en escritura: ${error.message}\n` +
+                    `- Verifica las reglas de Firestore\n` +
+                    `- Verifica la conexión a internet`
+                );
+            }
+        }
+        
+        async function testRead() {
+            try {
+                const data = await window.database.loadData('expenses');
+                
+                const testData = data.filter(item => item.test === true);
+                
+                updateTestStatus('test4', 'success', 
+                    `✅ Lectura exitosa:\n` +
+                    `- Total registros: ${data.length}\n` +
+                    `- Registros de test: ${testData.length}\n` +
+                    `- Último registro: ${data[0]?.descripcion || 'Ninguno'}`
+                );
+            } catch (error) {
+                updateTestStatus('test4', 'error', 
+                    `❌ Error en lectura: ${error.message}\n` +
+                    `- Verifica las reglas de Firestore\n` +
+                    `- Verifica que la colección exista`
+                );
+            }
+        }
+        
+        function testSecurityRules() {
+            const projectId = window.firebaseConfig?.projectId;
+            if (projectId) {
+                const rulesUrl = `https://console.firebase.google.com/project/${projectId}/firestore/rules`;
+                updateTestStatus('test5', 'warning', 
+                    `⚠️ Verifica manualmente las reglas:\n\n` +
+                    `1. Ve a: ${rulesUrl}\n\n` +
+                    `2. Las reglas deben ser:\n` +
+                    `rules_version = '2';\n` +
+                    `service cloud.firestore {\n` +
+                    `  match /databases/{database}/documents {\n` +
+                    `    match /users/{userId}/{collection}/{document=**} {\n` +
+                    `      allow read, write: if resource == null ||\n` +
+                    `        resource.data.userKey == request.query.userKey ||\n` +
+                    `        request.resource.data.userKey is string;\n` +
+                    `    }\n` +
+                    `  }\n` +
+                    `}`
+                );
+            }
+        }
+        
+        function showFullConfig() {
+            log('📋 Configuración completa:');
+            log(JSON.stringify(window.firebaseConfig, null, 2));
+            log('User Info: ' + JSON.stringify(window.database?.getUserInfo(), null, 2));
+        }
+        
+        function testUserGeneration() {
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userKey');
+            log('🔄 Datos de usuario eliminados. Recarga la página para generar nuevo usuario.');
+        }
+        
+        function clearLocalStorage() {
+            localStorage.clear();
+            log('🗑️ localStorage limpiado completamente.');
+        }
+        
+        async function forceSync() {
+            if (window.database) {
+                try {
+                    await window.database.syncPendingOperations();
+                    log('🔄 Sincronización forzada completada.');
+                } catch (error) {
+                    log('❌ Error en sincronización: ' + error.message);
+                }
+            }
+        }
+        
+        // Iniciar diagnósticos automáticamente
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(runDiagnostics, 1000);
+        });
+    </script>
+</body>
+</html>
