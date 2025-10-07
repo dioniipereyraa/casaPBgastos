@@ -1066,3 +1066,139 @@ body {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Configuration Section */
+.config-section {
+    padding: var(--spacing-xl);
+}
+
+.config-card {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+}
+
+.config-card h3 {
+    color: var(--primary-color);
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.detail-item label {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.copy-field {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.copy-field input {
+    flex: 1;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+.sync-form {
+    margin: var(--spacing-lg) 0;
+}
+
+.sync-instructions {
+    background: #f0f9ff;
+    border: 1px solid #0ea5e9;
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+}
+
+.sync-instructions h4 {
+    color: #0369a1;
+    margin-bottom: var(--spacing-sm);
+}
+
+.sync-instructions ol {
+    margin-left: var(--spacing-lg);
+    color: #0c4a6e;
+}
+
+.sync-status-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm);
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+}
+
+.status-item .label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.status-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.data-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    margin-bottom: var(--spacing-md);
+}
+
+.warning-text {
+    color: var(--warning-color);
+    font-size: 0.85rem;
+    font-style: italic;
+    background: #fef3c7;
+    padding: var(--spacing-sm);
+    border-radius: 6px;
+    border-left: 3px solid var(--warning-color);
+}
+
+@media (max-width: 768px) {
+    .copy-field {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .data-actions {
+        flex-direction: column;
+    }
+    
+    .user-details {
+        gap: var(--spacing-lg);
+    }
+}

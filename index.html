@@ -70,6 +70,9 @@
             <button class="tab-button" data-tab="facturas">
                 <i class="fas fa-receipt"></i> Subir Facturas
             </button>
+            <button class="tab-button" data-tab="configuracion">
+                <i class="fas fa-cog"></i> Configuración
+            </button>
         </nav>
 
         <!-- Balance Section -->
@@ -323,6 +326,107 @@
                 </section>
             </div> <!-- End Facturas Tab -->
 
+            <!-- Configuración Tab -->
+            <div id="configuracion" class="tab-panel">
+                <section class="config-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-cog"></i> Configuración de Sincronización</h2>
+                        <p>Gestiona la sincronización de datos entre tus dispositivos</p>
+                    </div>
+
+                    <!-- User Info -->
+                    <div class="config-card">
+                        <h3><i class="fas fa-user"></i> Tu Información de Usuario</h3>
+                        <div class="user-details">
+                            <div class="detail-item">
+                                <label>ID de Usuario:</label>
+                                <div class="copy-field">
+                                    <input type="text" id="displayUserId" readonly>
+                                    <button class="btn btn-secondary" onclick="copyUserId()">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <label>Clave de Sincronización:</label>
+                                <div class="copy-field">
+                                    <input type="text" id="displayUserKey" readonly>
+                                    <button class="btn btn-secondary" onclick="copyUserKey()">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sync with another device -->
+                    <div class="config-card">
+                        <h3><i class="fas fa-sync"></i> Sincronizar con otro Dispositivo</h3>
+                        <p>Para ver los mismos datos en múltiples dispositivos, ingresa tu clave de sincronización:</p>
+                        
+                        <div class="sync-form">
+                            <div class="form-group">
+                                <label for="importUserKey">Clave de Sincronización:</label>
+                                <input type="text" id="importUserKey" placeholder="Pega aquí tu clave de sincronización">
+                            </div>
+                            <button class="btn btn-primary" onclick="importUserKey()">
+                                <i class="fas fa-download"></i> Sincronizar Dispositivo
+                            </button>
+                        </div>
+                        
+                        <div class="sync-instructions">
+                            <h4>📱 Cómo sincronizar:</h4>
+                            <ol>
+                                <li>En tu <strong>dispositivo principal</strong>, copia la "Clave de Sincronización"</li>
+                                <li>En tu <strong>nuevo dispositivo</strong>, pega la clave en el campo de arriba</li>
+                                <li>Haz clic en "Sincronizar Dispositivo"</li>
+                                <li>¡Listo! Ahora ambos dispositivos verán los mismos datos</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- Sync Status -->
+                    <div class="config-card">
+                        <h3><i class="fas fa-cloud"></i> Estado de la Nube</h3>
+                        <div class="sync-status-details">
+                            <div class="status-item">
+                                <span class="label">Estado de conexión:</span>
+                                <span id="connectionStatus" class="status-value">🔄 Verificando...</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="label">Operaciones pendientes:</span>
+                                <span id="pendingOps" class="status-value">0</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="label">Última sincronización:</span>
+                                <span id="lastSync" class="status-value">Nunca</span>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="forcSync()">
+                            <i class="fas fa-sync"></i> Forzar Sincronización
+                        </button>
+                    </div>
+
+                    <!-- Data Management -->
+                    <div class="config-card">
+                        <h3><i class="fas fa-database"></i> Gestión de Datos</h3>
+                        <div class="data-actions">
+                            <button class="btn btn-secondary" onclick="exportData()">
+                                <i class="fas fa-download"></i> Exportar Datos
+                            </button>
+                            <button class="btn btn-warning" onclick="resetUserData()">
+                                <i class="fas fa-user-times"></i> Generar Nueva Clave
+                            </button>
+                        </div>
+                        <p class="warning-text">
+                            ⚠️ "Generar Nueva Clave" creará un usuario completamente nuevo. 
+                            Guarda tus datos antes.
+                        </p>
+                    </div>
+                </section>
+            </div> <!-- End Configuración Tab -->
+
         </div> <!-- End Tab Content -->
     </div>
 
@@ -373,38 +477,133 @@
 
         // Inicializar aplicación
         document.addEventListener('DOMContentLoaded', () => {
-            // Verificar entorno solo en producción
-            const isProduction = !window.location.href.includes('localhost') && 
-                                !window.location.href.includes('127.0.0.1') &&
-                                !window.location.href.includes('file://');
-            
-            if(isProduction && window._sec && !window._sec.checkEnv()) {
-                document.body.innerHTML = '<div style="text-align:center;padding:50px;color:red;font-family:Arial;">Entorno no autorizado detectado</div>';
-                return;
-            }
-            
             setTimeout(() => {
                 try {
                     window.sincronizacionSimple = new SincronizacionSimple();
                     window.gestorFinanzas = new GestorFinanzas();
                     window.gestorFacturas = new GestorFacturas();
                     
-                    // Mostrar mensaje de estado de protección solo en desarrollo
-                    if(!isProduction) {
-                        console.log('%c🛡️ Modo Desarrollo - Protecciones reducidas', 'color: orange; font-size: 14px;');
-                    } else {
-                        console.log('%c🔒 Modo Producción - Protecciones activas', 'color: green; font-size: 14px;');
-                    }
+                    // Configurar pestañas
+                    setupTabs();
+                    
+                    // Actualizar info de usuario en configuración
+                    setTimeout(updateConfigInfo, 2000);
+                    
+                    console.log('✅ Aplicación inicializada correctamente');
                 } catch(e) {
                     console.error('Error iniciando aplicación:', e);
-                    // En desarrollo, mostrar error detallado
-                    if(!isProduction) {
-                        alert('Error de inicialización: ' + e.message);
-                    } else {
-                        document.body.innerHTML = '<div style="text-align:center;padding:50px;font-family:Arial;">Error de inicialización</div>';
-                    }
+                    alert('Error de inicialización: ' + e.message);
                 }
             }, 1000);
+        });
+
+        // Funciones de configuración
+        function setupTabs() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanels = document.querySelectorAll('.tab-panel');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.getAttribute('data-tab');
+                    
+                    // Remover active de todos
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanels.forEach(panel => panel.classList.remove('active'));
+                    
+                    // Activar seleccionado
+                    button.classList.add('active');
+                    document.getElementById(targetTab).classList.add('active');
+                    
+                    // Actualizar info si es configuración
+                    if (targetTab === 'configuracion') {
+                        updateConfigInfo();
+                    }
+                });
+            });
+        }
+
+        function updateConfigInfo() {
+            if (window.gestorFinanzas && window.gestorFinanzas.database) {
+                const userInfo = window.gestorFinanzas.database.getUserInfo();
+                
+                document.getElementById('displayUserId').value = userInfo.userId || 'No disponible';
+                document.getElementById('displayUserKey').value = userInfo.userKey?.replace('...', '') || 'No disponible';
+                document.getElementById('connectionStatus').textContent = userInfo.isOnline ? '🌐 En línea' : '📱 Sin conexión';
+                document.getElementById('pendingOps').textContent = userInfo.pendingOperations || 0;
+            }
+        }
+
+        function copyUserId() {
+            const field = document.getElementById('displayUserId');
+            field.select();
+            document.execCommand('copy');
+            alert('ID de usuario copiado al portapapeles');
+        }
+
+        function copyUserKey() {
+            const field = document.getElementById('displayUserKey');
+            field.select();
+            document.execCommand('copy');
+            alert('Clave de sincronización copiada al portapapeles');
+        }
+
+        async function importUserKey() {
+            const newKey = document.getElementById('importUserKey').value.trim();
+            
+            if (!newKey) {
+                alert('Por favor, ingresa una clave de sincronización');
+                return;
+            }
+            
+            if (newKey.length < 16) {
+                alert('La clave de sincronización no es válida');
+                return;
+            }
+            
+            if (confirm('¿Estás seguro? Esto reemplazará tus datos actuales con los datos del otro dispositivo.')) {
+                try {
+                    // Actualizar clave de usuario
+                    localStorage.setItem('userKey', newKey);
+                    
+                    // Recargar página para aplicar cambios
+                    alert('Clave actualizada. La página se recargará para sincronizar.');
+                    location.reload();
+                } catch (error) {
+                    alert('Error al importar la clave: ' + error.message);
+                }
+            }
+        }
+
+        async function forcSync() {
+            if (window.gestorFinanzas && window.gestorFinanzas.database) {
+                try {
+                    await window.gestorFinanzas.database.syncPendingOperations();
+                    alert('Sincronización completada');
+                    updateConfigInfo();
+                } catch (error) {
+                    alert('Error en la sincronización: ' + error.message);
+                }
+            }
+        }
+
+        async function exportData() {
+            if (window.gestorFinanzas) {
+                try {
+                    window.gestorFinanzas.exportarDatos();
+                } catch (error) {
+                    alert('Error al exportar: ' + error.message);
+                }
+            }
+        }
+
+        function resetUserData() {
+            if (confirm('¿Estás seguro? Esto creará un nuevo usuario y perderás acceso a tus datos actuales. Asegúrate de exportar tus datos primero.')) {
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userKey');
+                alert('Usuario reseteado. La página se recargará.');
+                location.reload();
+            }
+        }
         });
 
         // Detectar si es una PWA instalada
