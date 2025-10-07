@@ -45,23 +45,29 @@ class DatabaseService {
     }
 
     async setupUser() {
-        // Obtener ID de usuario almacenado o crear uno nuevo
-        this.userId = localStorage.getItem('userId') || this.generateUserId();
-        this.userKey = localStorage.getItem('userKey') || this.generateUserKey();
+        // ✨ USUARIO GLOBAL COMPARTIDO - Todos ven los mismos datos
+        const GLOBAL_USER_ID = 'global_casa_gastos_2025';
+        const GLOBAL_USER_KEY = 'casa_gastos_familia_key_2025_firebase';
         
-        // Guardar en localStorage
+        // Usar siempre el mismo usuario global
+        this.userId = GLOBAL_USER_ID;
+        this.userKey = GLOBAL_USER_KEY;
+        
+        // Guardar en localStorage para compatibilidad
         localStorage.setItem('userId', this.userId);
         localStorage.setItem('userKey', this.userKey);
         
-        console.log('Usuario configurado:', this.userId.substring(0, 8) + '...');
+        console.log('🌍 Usuario global configurado - Datos compartidos entre todos los dispositivos');
     }
 
     generateUserId() {
-        return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        // Ya no se usa - mantenido por compatibilidad
+        return 'global_casa_gastos_2025';
     }
 
     generateUserKey() {
-        return Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+        // Ya no se usa - mantenido por compatibilidad
+        return 'casa_gastos_familia_key_2025_firebase';
     }
 
     // Guardar datos con sincronización
