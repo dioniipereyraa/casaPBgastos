@@ -1,14 +1,16 @@
-// Configuración de Firebase - Reemplaza con tu configuración real
-// Obtén tu configuración en: https://console.firebase.google.com/
+// Configuración de Firebase - Proyecto: casapbgastos
+// Configuración obtenida desde Firebase Console
 
 const firebaseConfig = {
-  apiKey: "AIzaSyExample-Replace-With-Your-Real-API-Key",
-  authDomain: "gestion-gastos-hogar.firebaseapp.com",
-  projectId: "gestion-gastos-hogar",
-  storageBucket: "gestion-gastos-hogar.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef123456789012"
+  apiKey: "AIzaSyCr2CEQ3KkTsS_ZrVx-zOzrjOkykXkvKVI",
+  authDomain: "casapbgastos.firebaseapp.com",
+  projectId: "casapbgastos",
+  storageBucket: "casapbgastos.firebasestorage.app",
+  messagingSenderId: "714910691289",
+  appId: "1:714910691289:web:065505c9cb00e0ac06b3c8"
 };
 
-// Exportar configuración
+// Exportar configuración para uso en la aplicación
 window.firebaseConfig = firebaseConfig;
+
+console.log('🔥 Firebase configurado correctamente:', firebaseConfig.projectId);
