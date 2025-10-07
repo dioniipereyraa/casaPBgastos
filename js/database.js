@@ -125,6 +125,20 @@ class DatabaseService {
                 this.showSyncStatus('error');
             });
 
+            // Listener para configuración (API keys, etc.)
+            const configQuery = query(
+                collection(this.db, 'users', this.userId, 'config'),
+                where('userKey', '==', this.userKey)
+            );
+            
+            this.configUnsubscribe = onSnapshot(configQuery, (snapshot) => {
+                console.log('📱 Cambios detectados en configuración');
+                this.handleRealtimeUpdate('config', snapshot);
+            }, (error) => {
+                console.error('Error en listener de configuración:', error);
+                this.showSyncStatus('error');
+            });
+
             console.log('👂 Listeners de tiempo real configurados correctamente');
         } catch (error) {
             console.error('Error configurando listeners:', error);

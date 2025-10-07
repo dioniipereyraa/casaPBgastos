@@ -48,6 +48,9 @@ class GestorFinanzas {
             } else if (collection === 'incomes') {
                 this.ingresos = data;
                 this.renderizarIngresos();
+            } else if (collection === 'config') {
+                // Manejar cambios de configuración (API keys, etc.)
+                this.handleConfigUpdate(data);
             }
             
             this.actualizarBalance();
@@ -55,6 +58,25 @@ class GestorFinanzas {
             // Mostrar notificación de sincronización
             this.mostrarNotificacion('📱 Datos sincronizados desde otro dispositivo', 'success');
         });
+    }
+
+    // Manejar actualizaciones de configuración
+    handleConfigUpdate(configData) {
+        const apiKeyConfig = configData.find(config => config.type === 'chatgpt_api_key');
+        
+        if (apiKeyConfig && window.gestorFacturas) {
+            // Actualizar API key en el gestor de facturas si cambió
+            if (window.gestorFacturas.apiKey !== apiKeyConfig.value) {
+                window.gestorFacturas.apiKey = apiKeyConfig.value;
+                const apiKeyInput = document.getElementById('chatgptApiKey');
+                if (apiKeyInput) {
+                    apiKeyInput.value = apiKeyConfig.value;
+                }
+                window.gestorFacturas.verificarConfiguracion();
+                console.log('🔑 API Key actualizada desde otro dispositivo');
+                this.mostrarNotificacion('🔑 API Key sincronizada desde otro dispositivo', 'success');
+            }
+        }
     }
 
     // Configuración de eventos

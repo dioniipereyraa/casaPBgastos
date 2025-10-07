@@ -8,17 +8,31 @@ class GestorFacturas {
         this.init();
     }
 
-    init() {
+    async init() {
         // Esperar a que la base de datos esté disponible
-        if (window.gestorFinanzas && window.gestorFinanzas.database) {
-            this.database = window.gestorFinanzas.database;
-        }
+        await this.esperarDatabase();
         
-        this.cargarApiKey();
+        await this.cargarApiKey();
         this.cargarFacturas();
         this.configurarEventos();
         this.configurarPestanas();
         this.verificarConfiguracion();
+    }
+
+    // Esperar a que DatabaseService esté disponible
+    async esperarDatabase() {
+        return new Promise((resolve) => {
+            const checkDatabase = () => {
+                if (window.gestorFinanzas && window.gestorFinanzas.database && window.gestorFinanzas.database.initialized) {
+                    this.database = window.gestorFinanzas.database;
+                    console.log('📡 GestorFacturas conectado a DatabaseService');
+                    resolve();
+                } else {
+                    setTimeout(checkDatabase, 100);
+                }
+            };
+            checkDatabase();
+        });
     }
 
     // Configuración de pestañas
@@ -90,15 +104,44 @@ class GestorFacturas {
         });
     }
 
-    // Gestión de API Key
-    cargarApiKey() {
-        this.apiKey = localStorage.getItem('chatgpt_api_key') || '';
-        if (this.apiKey) {
-            document.getElementById('chatgptApiKey').value = this.apiKey;
+    // Gestión de API Key sincronizada
+    async cargarApiKey() {
+        try {
+            // Primero intentar cargar desde Firebase
+            if (this.database && !this.database.useLocalStorageOnly) {
+                const configData = await this.database.loadData('config');
+                const apiConfig = configData.find(config => config.type === 'chatgpt_api_key');
+                
+                if (apiConfig && apiConfig.value) {
+                    this.apiKey = apiConfig.value;
+                    document.getElementById('chatgptApiKey').value = this.apiKey;
+                    console.log('🔑 API Key cargada desde Firebase (sincronizada)');
+                    return;
+                }
+            }
+            
+            // Fallback a localStorage
+            this.apiKey = localStorage.getItem('chatgpt_api_key') || '';
+            if (this.apiKey) {
+                document.getElementById('chatgptApiKey').value = this.apiKey;
+                console.log('🔑 API Key cargada desde localStorage');
+                
+                // Si tenemos la key en localStorage pero no en Firebase, sincronizarla
+                if (this.database && !this.database.useLocalStorageOnly) {
+                    await this.sincronizarApiKeyAFirebase();
+                }
+            }
+        } catch (error) {
+            console.error('Error cargando API Key:', error);
+            // Usar localStorage como respaldo
+            this.apiKey = localStorage.getItem('chatgpt_api_key') || '';
+            if (this.apiKey) {
+                document.getElementById('chatgptApiKey').value = this.apiKey;
+            }
         }
     }
 
-    guardarApiKey() {
+    async guardarApiKey() {
         const apiKey = document.getElementById('chatgptApiKey').value.trim();
         if (!apiKey) {
             alert('Por favor, ingresa tu API Key de OpenAI');
@@ -110,10 +153,57 @@ class GestorFacturas {
             return;
         }
 
-        this.apiKey = apiKey;
-        localStorage.setItem('chatgpt_api_key', apiKey);
-        this.verificarConfiguracion();
-        this.mostrarAlerta('API Key guardada correctamente', 'success');
+        try {
+            this.apiKey = apiKey;
+            
+            // Guardar en localStorage como respaldo
+            localStorage.setItem('chatgpt_api_key', apiKey);
+            
+            // Guardar en Firebase para sincronización
+            if (this.database && !this.database.useLocalStorageOnly) {
+                const configData = {
+                    id: 'chatgpt_api_key',
+                    type: 'chatgpt_api_key',
+                    value: apiKey,
+                    timestamp: new Date(),
+                    device: navigator.userAgent.substring(0, 50) // Para identificar qué dispositivo guardó la key
+                };
+                
+                await this.database.saveData('config', configData);
+                console.log('🔑 API Key sincronizada a Firebase - disponible en todos los dispositivos');
+                this.mostrarAlerta('API Key guardada y sincronizada en todos los dispositivos 🌍', 'success');
+            } else {
+                console.log('🔑 API Key guardada localmente');
+                this.mostrarAlerta('API Key guardada correctamente', 'success');
+            }
+            
+            this.verificarConfiguracion();
+            
+        } catch (error) {
+            console.error('Error guardando API Key:', error);
+            this.mostrarAlerta('Error al guardar API Key. Guardada solo localmente.', 'warning');
+        }
+    }
+
+    // Método auxiliar para sincronizar API Key desde localStorage a Firebase
+    async sincronizarApiKeyAFirebase() {
+        try {
+            if (!this.apiKey || !this.database) return;
+            
+            const configData = {
+                id: 'chatgpt_api_key',
+                type: 'chatgpt_api_key',
+                value: this.apiKey,
+                timestamp: new Date(),
+                device: navigator.userAgent.substring(0, 50),
+                synced_from_localStorage: true
+            };
+            
+            await this.database.saveData('config', configData);
+            console.log('🔄 API Key sincronizada desde localStorage a Firebase');
+        } catch (error) {
+            console.error('Error sincronizando API Key a Firebase:', error);
+        }
     }
 
     verificarConfiguracion() {
