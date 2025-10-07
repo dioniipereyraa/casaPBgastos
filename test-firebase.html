@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Firebase Connection</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🔥 Test de Conexión Firebase</h1>
+    <div id="logs"></div>
+    
+    <script src="js/firebase-config.js"></script>
+    <script type="module">
+        const logs = document.getElementById('logs');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            logs.appendChild(div);
+            console.log(message);
+        }
+        
+        async function testFirebase() {
+            try {
+                log('🚀 Iniciando test de Firebase...', 'info');
+                
+                // Importar Firebase
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js');
+                const { getFirestore, doc, setDoc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js');
+                
+                log('✅ Firebase modules importados correctamente', 'success');
+                
+                // Inicializar Firebase
+                const app = initializeApp(window.firebaseConfig);
+                const db = getFirestore(app);
+                
+                log('✅ Firebase inicializado correctamente', 'success');
+                
+                // Configurar usuario global
+                const GLOBAL_USER_ID = 'global_casa_gastos_2025';
+                const GLOBAL_USER_KEY = 'casa_gastos_familia_key_2025_firebase';
+                
+                log(`👤 Usuario global: ${GLOBAL_USER_ID}`, 'info');
+                
+                // Intentar escribir datos de prueba
+                const testData = {
+                    id: 'test_' + Date.now(),
+                    userKey: GLOBAL_USER_KEY,
+                    description: 'Test de conectividad',
+                    amount: 1.00,
+                    category: 'test',
+                    timestamp: new Date()
+                };
+                
+                log('📝 Intentando escribir datos de prueba...', 'info');
+                
+                const docRef = doc(db, 'users', GLOBAL_USER_ID, 'expenses', testData.id);
+                await setDoc(docRef, testData);
+                
+                log('✅ Datos escritos correctamente en Firebase!', 'success');
+                
+                // Intentar leer los datos
+                log('📖 Intentando leer datos de prueba...', 'info');
+                
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    log('✅ Datos leídos correctamente de Firebase!', 'success');
+                    log(`📄 Datos: ${JSON.stringify(docSnap.data(), null, 2)}`, 'info');
+                } else {
+                    log('❌ No se pudieron leer los datos', 'error');
+                }
+                
+                log('🎉 Test completado exitosamente!', 'success');
+                
+            } catch (error) {
+                log(`❌ Error en test: ${error.message}`, 'error');
+                console.error('Error completo:', error);
+            }
+        }
+        
+        // Ejecutar test al cargar
+        testFirebase();
+    </script>
+</body>
+</html>

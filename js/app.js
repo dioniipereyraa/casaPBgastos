@@ -29,6 +29,30 @@ class GestorFinanzas {
         this.actualizarBalance();
         this.mostrarEstadoInicial();
         this.mostrarInfoUsuario();
+        
+        // Configurar listener para cambios en tiempo real
+        this.configurarSincronizacionTiempoReal();
+    }
+
+    // Configurar sincronización en tiempo real
+    configurarSincronizacionTiempoReal() {
+        window.addEventListener('dataUpdated', async (event) => {
+            const { collection, data } = event.detail;
+            console.log(`🔄 Actualizando interfaz: ${collection}`);
+            
+            if (collection === 'expenses') {
+                this.gastos = data;
+                this.renderizarGastos();
+            } else if (collection === 'incomes') {
+                this.ingresos = data;
+                this.renderizarIngresos();
+            }
+            
+            this.actualizarBalance();
+            
+            // Mostrar notificación de sincronización
+            this.mostrarNotificacion('📱 Datos sincronizados desde otro dispositivo', 'success');
+        });
     }
 
     // Configuración de eventos
@@ -542,6 +566,27 @@ class GestorFinanzas {
         if (info.pendingOperations > 0) {
             console.log('⏳ Operaciones pendientes:', info.pendingOperations);
         }
+    }
+
+    // Mostrar notificaciones al usuario
+    mostrarNotificacion(mensaje, tipo = 'info') {
+        // Crear elemento de notificación
+        const notificacion = document.createElement('div');
+        notificacion.className = `notification ${tipo}`;
+        notificacion.innerHTML = `
+            <span>${mensaje}</span>
+            <button onclick="this.parentElement.remove()">×</button>
+        `;
+        
+        // Agregar al DOM
+        document.body.appendChild(notificacion);
+        
+        // Auto-remover después de 3 segundos
+        setTimeout(() => {
+            if (notificacion.parentElement) {
+                notificacion.remove();
+            }
+        }, 3000);
     }
 }
 

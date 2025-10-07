@@ -17,11 +17,15 @@ class DatabaseService {
 
     async initializeFirebase() {
         try {
+            console.log('🚀 Iniciando Firebase...');
+            this.showSyncStatus('syncing');
+
             // Verificar si Firebase está configurado
             if (!window.firebaseConfig || !window.firebaseConfig.apiKey || 
                 window.firebaseConfig.apiKey.includes('Example')) {
                 console.warn('Firebase no configurado. Usando localStorage únicamente.');
                 this.useLocalStorageOnly = true;
+                this.showSyncStatus('offline');
                 return;
             }
 
@@ -38,9 +42,18 @@ class DatabaseService {
             // Obtener o crear usuario
             await this.setupUser();
             
+            // Mostrar estado final
+            if (this.isOnline) {
+                this.showSyncStatus('online');
+                console.log('🌍 Sistema global listo - sincronización activa');
+            } else {
+                this.showSyncStatus('offline');
+            }
+            
         } catch (error) {
             console.error('Error inicializando Firebase:', error);
             this.useLocalStorageOnly = true;
+            this.showSyncStatus('error');
         }
     }
 
@@ -58,6 +71,63 @@ class DatabaseService {
         localStorage.setItem('userKey', this.userKey);
         
         console.log('🌍 Usuario global configurado - Datos compartidos entre todos los dispositivos');
+        
+        // Configurar listeners de tiempo real si Firebase está disponible
+        if (!this.useLocalStorageOnly && this.db) {
+            await this.setupRealtimeListeners();
+        }
+    }
+
+    // Configurar listeners de tiempo real para sincronización automática
+    async setupRealtimeListeners() {
+        try {
+            const { collection, query, where, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js');
+            
+            // Listener para gastos
+            const expensesQuery = query(
+                collection(this.db, 'users', this.userId, 'expenses'),
+                where('userKey', '==', this.userKey)
+            );
+            
+            this.expensesUnsubscribe = onSnapshot(expensesQuery, (snapshot) => {
+                console.log('📱 Cambios detectados en gastos');
+                this.handleRealtimeUpdate('expenses', snapshot);
+            });
+
+            // Listener para ingresos
+            const incomesQuery = query(
+                collection(this.db, 'users', this.userId, 'incomes'),
+                where('userKey', '==', this.userKey)
+            );
+            
+            this.incomesUnsubscribe = onSnapshot(incomesQuery, (snapshot) => {
+                console.log('📱 Cambios detectados en ingresos');
+                this.handleRealtimeUpdate('incomes', snapshot);
+            });
+
+            console.log('👂 Listeners de tiempo real configurados');
+        } catch (error) {
+            console.error('Error configurando listeners:', error);
+        }
+    }
+
+    // Manejar actualizaciones en tiempo real
+    handleRealtimeUpdate(collection, snapshot) {
+        const data = [];
+        snapshot.forEach((doc) => {
+            data.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Actualizar localStorage
+        this.saveCollectionToLocalStorage(collection, data);
+        
+        // Notificar a la app que hay cambios
+        window.dispatchEvent(new CustomEvent('dataUpdated', { 
+            detail: { collection, data } 
+        }));
+        
+        this.showSyncStatus('synced');
+        console.log(`✅ Datos actualizados: ${collection} (${data.length} elementos)`);
     }
 
     generateUserId() {
