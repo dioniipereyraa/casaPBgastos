@@ -7,12 +7,18 @@ class DatabaseService {
         this.isOnline = navigator.onLine;
         this.pendingOperations = [];
         this.syncInProgress = false;
+        this.initialized = false;
         
         // Escuchar cambios de conectividad
         window.addEventListener('online', () => this.handleOnline());
         window.addEventListener('offline', () => this.handleOffline());
         
-        this.initializeFirebase();
+        // Inicializar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.initializeFirebase());
+        } else {
+            this.initializeFirebase();
+        }
     }
 
     async initializeFirebase() {
@@ -50,10 +56,13 @@ class DatabaseService {
                 this.showSyncStatus('offline');
             }
             
+            this.initialized = true;
+            
         } catch (error) {
             console.error('Error inicializando Firebase:', error);
             this.useLocalStorageOnly = true;
             this.showSyncStatus('error');
+            this.initialized = true;
         }
     }
 
@@ -81,6 +90,11 @@ class DatabaseService {
     // Configurar listeners de tiempo real para sincronización automática
     async setupRealtimeListeners() {
         try {
+            if (this.useLocalStorageOnly || !this.db) {
+                console.log('⚠️ Firebase no disponible, listeners de tiempo real deshabilitados');
+                return;
+            }
+
             const { collection, query, where, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js');
             
             // Listener para gastos
@@ -92,6 +106,9 @@ class DatabaseService {
             this.expensesUnsubscribe = onSnapshot(expensesQuery, (snapshot) => {
                 console.log('📱 Cambios detectados en gastos');
                 this.handleRealtimeUpdate('expenses', snapshot);
+            }, (error) => {
+                console.error('Error en listener de gastos:', error);
+                this.showSyncStatus('error');
             });
 
             // Listener para ingresos
@@ -103,11 +120,15 @@ class DatabaseService {
             this.incomesUnsubscribe = onSnapshot(incomesQuery, (snapshot) => {
                 console.log('📱 Cambios detectados en ingresos');
                 this.handleRealtimeUpdate('incomes', snapshot);
+            }, (error) => {
+                console.error('Error en listener de ingresos:', error);
+                this.showSyncStatus('error');
             });
 
-            console.log('👂 Listeners de tiempo real configurados');
+            console.log('👂 Listeners de tiempo real configurados correctamente');
         } catch (error) {
             console.error('Error configurando listeners:', error);
+            this.showSyncStatus('error');
         }
     }
 
@@ -356,7 +377,10 @@ class DatabaseService {
     // Mostrar estado de sincronización
     showSyncStatus(status) {
         const statusElement = document.getElementById('syncStatus');
-        if (!statusElement) return;
+        if (!statusElement) {
+            console.warn('Elemento syncStatus no encontrado en el DOM');
+            return;
+        }
 
         const statusConfig = {
             online: { icon: '🌐', text: 'En línea', class: 'online' },
@@ -369,6 +393,8 @@ class DatabaseService {
         const config = statusConfig[status] || statusConfig.offline;
         statusElement.innerHTML = `${config.icon} ${config.text}`;
         statusElement.className = `sync-status ${config.class}`;
+        
+        console.log(`📊 Estado sincronización: ${config.text}`);
     }
 
     // Obtener información del usuario

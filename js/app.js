@@ -11,10 +11,10 @@ class GestorFinanzas {
         // Inicializar base de datos
         this.database = new DatabaseService();
         
-        // Esperar a que se inicialice Firebase
+        // Esperar a que se inicialice Firebase completamente
         await new Promise(resolve => {
             const checkInit = () => {
-                if (this.database.userId) {
+                if (this.database.initialized && this.database.userId) {
                     resolve();
                 } else {
                     setTimeout(checkInit, 100);
@@ -22,6 +22,8 @@ class GestorFinanzas {
             };
             checkInit();
         });
+        
+        console.log('✅ Aplicación inicializada correctamente');
         
         await this.cargarDatos();
         this.configurarEventos();
