@@ -90,16 +90,33 @@ Una aplicación web moderna y fácil de usar para gestionar las finanzas domést
 ## 🏗️ Estructura del Proyecto
 
 ```
-appCasagastosDef/
+casaPBgastos/
 ├── index.html              # Página principal
+├── manifest.json           # PWA manifest
+├── vercel.json             # Config de despliegue
+├── firestore-rules.js      # Reglas de seguridad Firestore
 ├── css/
-│   └── styles.css          # Estilos de la aplicación
+│   └── styles.css          # Estilos
 ├── js/
-│   └── app.js              # Lógica de la aplicación
-├── assets/                 # Recursos adicionales
-├── components/             # Componentes futuros
-└── README.md              # Este archivo
+│   ├── app.js              # Lógica principal (GestorFinanzas)
+│   ├── facturas.js         # Procesamiento de facturas (GestorFacturas)
+│   ├── database.js         # Capa Firestore + localStorage
+│   ├── firebase-config.js  # Configuración Firebase
+│   ├── security.js         # Protecciones anti-debug
+│   └── sw.js               # Service Worker (PWA offline)
+├── docs/                   # Documentación (FIREBASE, DEPLOY, SECURITY, etc.)
+├── tests/                  # Páginas de diagnóstico (debug.html, test-firebase.html)
+└── README.md
 ```
+
+## 📌 Versión actual: 1.1.0
+
+### Cambios 1.1.0
+- 🐛 Fix: al agregar un gasto/ingreso ya no se duplicaba por doble instanciación de `GestorFinanzas`.
+- 🧹 Eliminados archivos obsoletos (`app.min.js`, `facturas.min.js`, `security-old.js`).
+- 🧹 Removido `configurarPestanas` duplicado en `facturas.js` (ya manejado por `setupTabs` en `index.html`).
+- 🔧 Corregido registro del Service Worker (ruta `js/sw.js`) y cache actualizada.
+- 📁 Documentación movida a `docs/`; páginas de test movidas a `tests/`.
 
 ## 🛠️ Tecnologías Utilizadas
 

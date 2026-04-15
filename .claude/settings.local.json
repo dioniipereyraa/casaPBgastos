@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f js/app.min.js js/facturas.min.js js/security-old.js)",
+      "Bash(mkdir -p docs tests)",
+      "Bash(mv CHECKLIST.md DEPLOY.md FIREBASE-READY.md FIREBASE-SETUP.md FIREBASE.md SECURITY.md docs/)",
+      "Bash(mv debug.html test-firebase.html tests/)"
+    ]
+  }
+}

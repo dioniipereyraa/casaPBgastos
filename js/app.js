@@ -3,8 +3,72 @@ class GestorFinanzas {
     constructor() {
         this.ingresos = [];
         this.gastos = [];
+        this.seleccionIngresos = new Set();
+        this.seleccionGastos = new Set();
+        this.mesSeleccionado = this.mesActualYM(); // 'YYYY-MM'
+        this.limiteIngresos = 5;
+        this.limiteGastos = 5;
+        this.PAGE_SIZE = 5;
         this.database = null;
         this.init();
+    }
+
+    mesActualYM(d = new Date()) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+
+    // Verifica si cambió el mes; si sí, auto-actualiza selector
+    chequearCambioDeMes() {
+        const actual = this.mesActualYM();
+        if (this.mesSeleccionado !== actual && this._seguirMesActual !== false) {
+            this.mesSeleccionado = actual;
+            this.actualizarSelectorMes();
+            this.renderizarIngresos();
+            this.renderizarGastos();
+            this.actualizarBalance();
+        }
+    }
+
+    filtrarPorMes(items) {
+        return items.filter(it => (it.fecha || '').startsWith(this.mesSeleccionado));
+    }
+
+    formatearMesLargo(ym) {
+        const [y, m] = ym.split('-').map(Number);
+        const d = new Date(y, m - 1, 1);
+        const nombre = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+    }
+
+    cambiarMes(delta) {
+        const [y, m] = this.mesSeleccionado.split('-').map(Number);
+        const d = new Date(y, m - 1 + delta, 1);
+        this.mesSeleccionado = this.mesActualYM(d);
+        this._seguirMesActual = (this.mesSeleccionado === this.mesActualYM());
+        this.limiteIngresos = this.PAGE_SIZE;
+        this.limiteGastos = this.PAGE_SIZE;
+        this.actualizarSelectorMes();
+        this.renderizarIngresos();
+        this.renderizarGastos();
+        this.actualizarBalance();
+    }
+
+    irAMesActual() {
+        this.mesSeleccionado = this.mesActualYM();
+        this._seguirMesActual = true;
+        this.limiteIngresos = this.PAGE_SIZE;
+        this.limiteGastos = this.PAGE_SIZE;
+        this.actualizarSelectorMes();
+        this.renderizarIngresos();
+        this.renderizarGastos();
+        this.actualizarBalance();
+    }
+
+    actualizarSelectorMes() {
+        const label = document.getElementById('mesActual');
+        if (label) label.textContent = this.formatearMesLargo(this.mesSeleccionado);
+        const btnHoy = document.getElementById('btnHoy');
+        if (btnHoy) btnHoy.style.display = this.mesSeleccionado === this.mesActualYM() ? 'none' : 'inline-flex';
     }
 
     async init() {
@@ -108,6 +172,73 @@ class GestorFinanzas {
             e.preventDefault();
             this.agregarGasto();
         });
+
+        // Selector de mes
+        document.getElementById('btnPrevMes').addEventListener('click', () => this.cambiarMes(-1));
+        document.getElementById('btnNextMes').addEventListener('click', () => this.cambiarMes(1));
+        document.getElementById('btnHoy').addEventListener('click', () => this.irAMesActual());
+        this.actualizarSelectorMes();
+        // Revisar cada minuto si cambió el mes (para renovar automáticamente)
+        setInterval(() => this.chequearCambioDeMes(), 60 * 1000);
+
+        // Selección múltiple
+        document.getElementById('btnSelectAllIngresos').addEventListener('click', () => this.toggleSeleccionarTodos('ingreso'));
+        document.getElementById('btnSelectAllGastos').addEventListener('click', () => this.toggleSeleccionarTodos('gasto'));
+        document.getElementById('btnDeleteSelectedIngresos').addEventListener('click', () => this.eliminarSeleccionados('ingreso'));
+        document.getElementById('btnDeleteSelectedGastos').addEventListener('click', () => this.eliminarSeleccionados('gasto'));
+    }
+
+    toggleSeleccionarTodos(tipo) {
+        const set = tipo === 'ingreso' ? this.seleccionIngresos : this.seleccionGastos;
+        const items = tipo === 'ingreso' ? this.ingresos : this.gastos;
+        if (set.size === items.length) {
+            set.clear();
+        } else {
+            items.forEach(i => set.add(i.id));
+        }
+        if (tipo === 'ingreso') this.renderizarIngresos(); else this.renderizarGastos();
+    }
+
+    async eliminarSeleccionados(tipo) {
+        const set = tipo === 'ingreso' ? this.seleccionIngresos : this.seleccionGastos;
+        if (set.size === 0) return;
+        if (!confirm(`¿Eliminar ${set.size} ${tipo === 'ingreso' ? 'ingreso(s)' : 'gasto(s)'}? Esta acción no se puede deshacer.`)) return;
+
+        const collection = tipo === 'ingreso' ? 'incomes' : 'expenses';
+        const ids = Array.from(set);
+        set.clear();
+
+        try {
+            await Promise.all(ids.map(id => this.database.deleteData(collection, id)));
+            if (tipo === 'ingreso') {
+                this.ingresos = this.ingresos.filter(i => !ids.includes(i.id));
+                this.renderizarIngresos();
+            } else {
+                this.gastos = this.gastos.filter(g => !ids.includes(g.id));
+                this.renderizarGastos();
+            }
+            this.actualizarBalance();
+            this.mostrarAlerta(`${ids.length} eliminados`, 'success');
+        } catch (error) {
+            console.error('Error en eliminación masiva:', error);
+            this.mostrarAlerta('Error al eliminar algunos elementos', 'error');
+        }
+    }
+
+    actualizarBarraSeleccion(tipo) {
+        const set = tipo === 'ingreso' ? this.seleccionIngresos : this.seleccionGastos;
+        const items = tipo === 'ingreso' ? this.ingresos : this.gastos;
+        const suffix = tipo === 'ingreso' ? 'Ingresos' : 'Gastos';
+        const btnSelectAll = document.getElementById('btnSelectAll' + suffix);
+        const btnDelete = document.getElementById('btnDeleteSelected' + suffix);
+        const count = document.getElementById('countSel' + suffix);
+
+        btnSelectAll.style.display = items.length > 0 ? 'inline-flex' : 'none';
+        btnDelete.style.display = set.size > 0 ? 'inline-flex' : 'none';
+        count.textContent = set.size;
+        btnSelectAll.innerHTML = set.size === items.length && items.length > 0
+            ? '<i class="fas fa-square"></i> Deseleccionar todos'
+            : '<i class="fas fa-check-square"></i> Seleccionar todos';
     }
 
     // Gestión de formularios
@@ -158,12 +289,8 @@ class GestorFinanzas {
         };
 
         try {
-            // Guardar en base de datos (con sincronización)
+            // El listener de Firestore en tiempo real actualiza this.ingresos automáticamente.
             await this.database.saveData('incomes', nuevoIngreso);
-            this.ingresos.push(nuevoIngreso);
-            
-            this.renderizarIngresos();
-            this.actualizarBalance();
             this.ocultarFormulario('formIngreso');
             this.mostrarAlerta('Ingreso agregado exitosamente', 'success');
         } catch (error) {
@@ -200,12 +327,8 @@ class GestorFinanzas {
         };
 
         try {
-            // Guardar en base de datos (con sincronización)
+            // El listener de Firestore en tiempo real actualiza this.gastos automáticamente.
             await this.database.saveData('expenses', nuevoGasto);
-            this.gastos.push(nuevoGasto);
-            
-            this.renderizarGastos();
-            this.actualizarBalance();
             this.ocultarFormulario('formGasto');
             this.mostrarAlerta('Gasto agregado exitosamente', 'success');
         } catch (error) {
@@ -214,49 +337,73 @@ class GestorFinanzas {
         }
     }
 
-    // Renderizado de listas
+    // Renderizado de listas (filtrado por mes + paginado)
     renderizarIngresos() {
-        const lista = document.getElementById('listaIngresos');
-        lista.innerHTML = '';
-
-        if (this.ingresos.length === 0) {
-            lista.innerHTML = `
-                <div class="empty-message">
-                    <p>No hay ingresos registrados aún.</p>
-                </div>
-            `;
-            return;
-        }
-
-        // Ordenar por fecha (más reciente primero)
-        const ingresosOrdenados = this.ingresos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-        ingresosOrdenados.forEach(ingreso => {
-            const elemento = this.crearElementoTransaccion(ingreso);
-            lista.appendChild(elemento);
-        });
+        this.renderizarLista('ingreso');
+    }
+    renderizarGastos() {
+        this.renderizarLista('gasto');
     }
 
-    renderizarGastos() {
-        const lista = document.getElementById('listaGastos');
-        lista.innerHTML = '';
+    renderizarLista(tipo) {
+        const esIngreso = tipo === 'ingreso';
+        const listaEl = document.getElementById(esIngreso ? 'listaIngresos' : 'listaGastos');
+        const fuente = esIngreso ? this.ingresos : this.gastos;
+        listaEl.innerHTML = '';
 
-        if (this.gastos.length === 0) {
-            lista.innerHTML = `
-                <div class="empty-message">
-                    <p>No hay gastos registrados aún.</p>
-                </div>
-            `;
+        const delMes = this.filtrarPorMes(fuente)
+            .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+        if (delMes.length === 0) {
+            const mensaje = fuente.length === 0
+                ? `No hay ${esIngreso ? 'ingresos' : 'gastos'} registrados aún.`
+                : `No hay ${esIngreso ? 'ingresos' : 'gastos'} en ${this.formatearMesLargo(this.mesSeleccionado)}.`;
+            listaEl.innerHTML = `<div class="empty-message"><p>${mensaje}</p></div>`;
+            if (esIngreso) this.seleccionIngresos.clear(); else this.seleccionGastos.clear();
+            this.actualizarBarraSeleccion(tipo);
             return;
         }
 
-        // Ordenar por fecha (más reciente primero)
-        const gastosOrdenados = this.gastos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        const limite = esIngreso ? this.limiteIngresos : this.limiteGastos;
+        const visibles = delMes.slice(0, limite);
+        const ocultos = delMes.length - visibles.length;
 
-        gastosOrdenados.forEach(gasto => {
-            const elemento = this.crearElementoTransaccion(gasto);
-            lista.appendChild(elemento);
-        });
+        visibles.forEach(item => listaEl.appendChild(this.crearElementoTransaccion(item)));
+
+        if (ocultos > 0 || delMes.length > this.PAGE_SIZE) {
+            const footer = document.createElement('div');
+            footer.className = 'list-footer';
+            if (ocultos > 0) {
+                const btnMas = document.createElement('button');
+                btnMas.className = 'btn btn-secondary btn-sm';
+                btnMas.innerHTML = `<i class="fas fa-chevron-down"></i> Mostrar ${Math.min(ocultos, this.PAGE_SIZE)} más`;
+                btnMas.addEventListener('click', () => {
+                    if (esIngreso) this.limiteIngresos += this.PAGE_SIZE; else this.limiteGastos += this.PAGE_SIZE;
+                    this.renderizarLista(tipo);
+                });
+                footer.appendChild(btnMas);
+            }
+            if (visibles.length > this.PAGE_SIZE) {
+                const btnMenos = document.createElement('button');
+                btnMenos.className = 'btn btn-secondary btn-sm';
+                btnMenos.innerHTML = `<i class="fas fa-chevron-up"></i> Mostrar menos`;
+                btnMenos.addEventListener('click', () => {
+                    if (esIngreso) this.limiteIngresos = this.PAGE_SIZE; else this.limiteGastos = this.PAGE_SIZE;
+                    this.renderizarLista(tipo);
+                });
+                footer.appendChild(btnMenos);
+            }
+            const info = document.createElement('span');
+            info.className = 'list-footer-info';
+            info.textContent = `Mostrando ${visibles.length} de ${delMes.length}`;
+            footer.appendChild(info);
+            listaEl.appendChild(footer);
+        }
+
+        const fuenteIds = new Set(fuente.map(i => i.id));
+        const set = esIngreso ? this.seleccionIngresos : this.seleccionGastos;
+        set.forEach(id => { if (!fuenteIds.has(id)) set.delete(id); });
+        this.actualizarBarraSeleccion(tipo);
     }
 
     crearElementoTransaccion(transaccion) {
@@ -272,6 +419,15 @@ class GestorFinanzas {
         // Aplicar clase de tipo
         const montoElement = elemento.querySelector('.transaction-amount');
         montoElement.classList.add(transaccion.tipo === 'ingreso' ? 'income' : 'expense');
+
+        // Checkbox de selección múltiple
+        const checkbox = elemento.querySelector('.transaction-select');
+        const set = transaccion.tipo === 'ingreso' ? this.seleccionIngresos : this.seleccionGastos;
+        checkbox.checked = set.has(transaccion.id);
+        checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) set.add(transaccion.id); else set.delete(transaccion.id);
+            this.actualizarBarraSeleccion(transaccion.tipo);
+        });
 
         // Configurar botones
         const btnEditar = elemento.querySelector('.btn-edit');
@@ -343,10 +499,12 @@ class GestorFinanzas {
         }
     }
 
-    // Cálculo y actualización del balance
+    // Cálculo y actualización del balance (del mes seleccionado)
     actualizarBalance() {
-        const totalIngresos = this.ingresos.reduce((total, ingreso) => total + ingreso.monto, 0);
-        const totalGastos = this.gastos.reduce((total, gasto) => total + gasto.monto, 0);
+        const ingresosMes = this.filtrarPorMes(this.ingresos);
+        const gastosMes = this.filtrarPorMes(this.gastos);
+        const totalIngresos = ingresosMes.reduce((total, ingreso) => total + ingreso.monto, 0);
+        const totalGastos = gastosMes.reduce((total, gasto) => total + gasto.monto, 0);
         const balance = totalIngresos - totalGastos;
 
         // Actualizar elementos del DOM
@@ -548,7 +706,7 @@ class GestorFinanzas {
             ingresos: this.ingresos,
             gastos: this.gastos,
             fechaExportacion: new Date().toISOString(),
-            version: '1.0'
+            version: '1.1.0'
         };
 
         const dataStr = JSON.stringify(datos, null, 2);
@@ -614,10 +772,7 @@ class GestorFinanzas {
     }
 }
 
-// Inicializar la aplicación cuando se carga la página
-document.addEventListener('DOMContentLoaded', () => {
-    window.gestorFinanzas = new GestorFinanzas();
-});
+// La inicialización se realiza desde index.html para evitar instancias duplicadas.
 
 // Exportar para uso en consola de desarrollo
 if (typeof module !== 'undefined' && module.exports) {

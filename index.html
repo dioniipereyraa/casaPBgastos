@@ -49,7 +49,7 @@
             <div class="header-content">
                 <div class="header-title">
                     <h1><i class="fas fa-home"></i> Gestión de Gastos del Hogar Pereyra Bocchio</h1>
-                    <p>🌍 Sincronización automática entre dispositivos - v1.0.0</p>
+                    <p>🌍 Sincronización automática entre dispositivos - v1.3.0</p>
                 </div>
                 <div class="sync-info">
                     <div id="syncStatus" class="sync-status offline">
@@ -75,7 +75,15 @@
         <!-- Balance Section -->
         <section class="balance-section">
             <div class="balance-card">
-                <h2><i class="fas fa-balance-scale"></i> Balance General</h2>
+                <div class="balance-header">
+                    <h2><i class="fas fa-balance-scale"></i> Balance</h2>
+                    <div class="month-selector">
+                        <button class="btn-month" id="btnPrevMes" title="Mes anterior"><i class="fas fa-chevron-left"></i></button>
+                        <span id="mesActual" class="mes-label">—</span>
+                        <button class="btn-month" id="btnNextMes" title="Mes siguiente"><i class="fas fa-chevron-right"></i></button>
+                        <button class="btn btn-secondary btn-sm" id="btnHoy" title="Ir al mes actual">Hoy</button>
+                    </div>
+                </div>
                 <div class="balance-info">
                     <div class="balance-item">
                         <span class="label">Total Ingresos:</span>
@@ -104,9 +112,17 @@
             <section class="income-section">
                 <div class="section-header">
                     <h2><i class="fas fa-plus-circle"></i> Ingresos</h2>
-                    <button class="btn btn-primary" id="btnAddIngreso">
-                        <i class="fas fa-plus"></i> Agregar Ingreso
-                    </button>
+                    <div class="section-actions">
+                        <button class="btn btn-secondary btn-sm" id="btnSelectAllIngresos" style="display:none;">
+                            <i class="fas fa-check-square"></i> Seleccionar todos
+                        </button>
+                        <button class="btn btn-danger btn-sm" id="btnDeleteSelectedIngresos" style="display:none;">
+                            <i class="fas fa-trash"></i> Eliminar seleccionados (<span id="countSelIngresos">0</span>)
+                        </button>
+                        <button class="btn btn-primary" id="btnAddIngreso">
+                            <i class="fas fa-plus"></i> Agregar Ingreso
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="form-container" id="formIngreso" style="display: none;">
@@ -150,9 +166,17 @@
             <section class="expense-section">
                 <div class="section-header">
                     <h2><i class="fas fa-minus-circle"></i> Gastos</h2>
-                    <button class="btn btn-danger" id="btnAddGasto">
-                        <i class="fas fa-plus"></i> Agregar Gasto
-                    </button>
+                    <div class="section-actions">
+                        <button class="btn btn-secondary btn-sm" id="btnSelectAllGastos" style="display:none;">
+                            <i class="fas fa-check-square"></i> Seleccionar todos
+                        </button>
+                        <button class="btn btn-danger btn-sm" id="btnDeleteSelectedGastos" style="display:none;">
+                            <i class="fas fa-trash"></i> Eliminar seleccionados (<span id="countSelGastos">0</span>)
+                        </button>
+                        <button class="btn btn-danger" id="btnAddGasto">
+                            <i class="fas fa-plus"></i> Agregar Gasto
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="form-container" id="formGasto" style="display: none;">
@@ -329,6 +353,7 @@
     <!-- Transaction Item Template -->
     <template id="transactionTemplate">
         <div class="transaction-item">
+            <input type="checkbox" class="transaction-select" title="Seleccionar">
             <div class="transaction-info">
                 <div class="transaction-header">
                     <h4 class="transaction-description"></h4>
@@ -360,7 +385,7 @@
         // Registrar Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                navigator.serviceWorker.register('js/sw.js')
                     .then((registration) => {
                         console.log('SW registrado: ', registration);
                     })

@@ -15,7 +15,6 @@ class GestorFacturas {
         await this.cargarApiKey();
         this.cargarFacturas();
         this.configurarEventos();
-        this.configurarPestanas();
         this.verificarConfiguracion();
     }
 
@@ -32,26 +31,6 @@ class GestorFacturas {
                 }
             };
             checkDatabase();
-        });
-    }
-
-    // Configuración de pestañas
-    configurarPestanas() {
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabPanels = document.querySelectorAll('.tab-panel');
-
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const targetTab = button.getAttribute('data-tab');
-                
-                // Remover active de todos los botones y paneles
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                tabPanels.forEach(panel => panel.classList.remove('active'));
-                
-                // Activar el botón y panel seleccionado
-                button.classList.add('active');
-                document.getElementById(targetTab).classList.add('active');
-            });
         });
     }
 
@@ -465,20 +444,9 @@ class GestorFacturas {
         };
 
         try {
-            // Guardar en base de datos usando el gestor principal
+            // El listener de Firestore actualiza las listas automáticamente.
             const collection = tipo === 'ingreso' ? 'incomes' : 'expenses';
             await window.gestorFinanzas.database.saveData(collection, transaccion);
-
-            // Agregar a la aplicación principal
-            if (tipo === 'ingreso') {
-                window.gestorFinanzas.ingresos.push(transaccion);
-                window.gestorFinanzas.renderizarIngresos();
-            } else {
-                window.gestorFinanzas.gastos.push(transaccion);
-                window.gestorFinanzas.renderizarGastos();
-            }
-
-            window.gestorFinanzas.actualizarBalance();
             
             // Limpiar formulario y ocultar datos extraídos
             this.ocultarDatosExtraidos();

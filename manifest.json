@@ -1,5 +1,6 @@
 {
   "name": "Gestión de Gastos del Hogar",
+  "version": "1.3.0",
   "short_name": "Gastos Hogar",
   "description": "Aplicación web para gestionar las finanzas familiares",
   "start_url": "/",
